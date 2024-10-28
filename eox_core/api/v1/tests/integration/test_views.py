@@ -10,11 +10,11 @@ from copy import deepcopy
 import ddt
 import requests
 from django.conf import settings as ds
-from django.test import TestCase
 from django.urls import reverse
 from rest_framework import status
 
 from eox_core.api.v1.tests.integration.data.fake_users import FAKE_USER_DATA
+from eox_core.test_utils import BaseIntegrationTest
 
 settings = ds.INTEGRATION_TEST_SETTINGS
 
@@ -82,39 +82,6 @@ def make_request(
         headers=headers,
         timeout=settings["API_TIMEOUT"],
     )
-
-
-class BaseAPIIntegrationTest(TestCase):
-    """
-    Base class for the integration test suite.
-    """
-
-    def setUp(self):
-        """
-        Set up the test suite.
-        """
-        self.default_site = self.get_tenant_data()
-        self.tenant_x = self.get_tenant_data("tenant-x")
-        self.tenant_y = self.get_tenant_data("tenant-y")
-        self.demo_course_id = settings["DEMO_COURSE_ID"]
-
-    def get_tenant_data(self, prefix: str = "") -> dict:
-        """
-        Get the tenant data.
-
-        If no prefix is provided, the default site data is returned.
-
-        Args:
-            prefix (str, optional): The tenant prefix. Defaults to "".
-
-        Returns:
-            dict: The tenant data.
-        """
-        domain = f"{prefix}.{settings['LMS_BASE']}" if prefix else settings["LMS_BASE"]
-        return {
-            "base_url": f"http://{domain}",
-            "domain": domain,
-        }
 
 
 class UsersAPIRequestMixin:
@@ -282,7 +249,7 @@ class PreEnrollmentAPIRequestMixin:
 
 
 @ddt.ddt
-class TestUsersAPIIntegration(BaseAPIIntegrationTest, UsersAPIRequestMixin):
+class TestUsersAPIIntegration(BaseIntegrationTest, UsersAPIRequestMixin):
     """Integration test suite for the Users API"""
 
     @ddt.data(
@@ -493,7 +460,7 @@ class TestUsersAPIIntegration(BaseAPIIntegrationTest, UsersAPIRequestMixin):
 
 
 @ddt.ddt
-class TestEnrollmentAPIIntegration(BaseAPIIntegrationTest, UsersAPIRequestMixin, EnrollmentAPIRequestMixin):
+class TestEnrollmentAPIIntegration(BaseIntegrationTest, UsersAPIRequestMixin, EnrollmentAPIRequestMixin):
     """Integration test suite for the Enrollment API"""
 
     def setUp(self) -> None:
@@ -1078,7 +1045,7 @@ class TestEnrollmentAPIIntegration(BaseAPIIntegrationTest, UsersAPIRequestMixin,
 
 @ddt.ddt
 class TestPreEnrollmentAPIIntegration(
-    BaseAPIIntegrationTest,
+    BaseIntegrationTest,
     UsersAPIRequestMixin,
     PreEnrollmentAPIRequestMixin,
 ):
@@ -1517,7 +1484,7 @@ class TestPreEnrollmentAPIIntegration(
         self.assertEqual(pre_enrollment_response.status_code, status.HTTP_200_OK)
 
 
-class TestInfoView(BaseAPIIntegrationTest):
+class TestInfoView(BaseIntegrationTest):
     """
     Integration test suite for the info view.
     """
