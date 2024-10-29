@@ -6,7 +6,6 @@ from django.conf import settings as ds
 from django.contrib.auth.models import User
 from django.test import TestCase
 
-
 DEFAULT_PASSWORD = 'test'
 settings = ds.INTEGRATION_TEST_SETTINGS
 
