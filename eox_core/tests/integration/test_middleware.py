@@ -4,22 +4,72 @@ import requests
 from django.conf import settings as ds
 from rest_framework import status
 
+from eox_core.api.v1.tests.integration.test_views import get_access_token
 from eox_core.test_utils import BaseIntegrationTest
 
 settings = ds.INTEGRATION_TEST_SETTINGS
+
+ACCESS_TOKEN = get_access_token()
 
 
 class TestPathRedirectionMiddleware(BaseIntegrationTest):
     """Integration tests for the PathRedirectionMiddleware."""
 
+    def setUp(self):
+        """Setup the test."""
+        super().setUp()
+        self.tenant_x_url = self.tenant_x.get("base_url")
+
+    def test_without_redirect(self):
+        """Test the PathRedirectionMiddleware without any redirection."""
+        response = requests.get(f"{self.tenant_x_url}/about", timeout=settings["API_TIMEOUT"])
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.url, f"{self.tenant_x_url}/about")
+
     def test_redirect_always(self):
         """Test the redirect_always feature."""
-        tenant_x_url = self.tenant_x.get("base_url")
-
-        response = requests.get(f"{tenant_x_url}/courses", timeout=settings["API_TIMEOUT"])
+        response = requests.get(f"{self.tenant_x_url}/blog", timeout=settings["API_TIMEOUT"])
+        self.assertEqual(response.history[0].status_code, status.HTTP_302_FOUND)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.url, f"{tenant_x_url}/about")
+        self.assertEqual(response.url, f"{self.tenant_x_url}/donate")
 
-        response = requests.get(f"{tenant_x_url}/blog", timeout=settings["API_TIMEOUT"])
+    # def test_login_required_with_logged_user(self):
+    #     """Test the login_required feature with a logged user."""
+    #     response = requests.get(
+    #         f"{self.tenant_x_url}/tos",
+    #         headers={"Authorization": f"Bearer {ACCESS_TOKEN}"},
+    #         timeout=settings["API_TIMEOUT"],
+    #     )
+    #     self.assertEqual(response.status_code, status.HTTP_200_OK)
+    #     self.assertEqual(response.url, f"{self.tenant_x_url}/tos")
+
+    def test_login_required(self):
+        """Test the login_required feature."""
+        response = requests.get(f"{self.tenant_x_url}/tos", timeout=settings["API_TIMEOUT"])
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.url, f"{tenant_x_url}/donate")
+        self.assertEqual(response.url, f"{settings['AUTHN_MICROFRONTEND_URL']}/login?next=%2Ftos")
+
+    def test_not_found(self):
+        """Test the not_found feature."""
+        response = requests.get(f"{self.tenant_x_url}/privacy", timeout=settings["API_TIMEOUT"])
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(response.url, f"{self.tenant_x_url}/privacy")
+
+    # def test_not_found_logged_in(self):
+    #     """Test the not_found and login_required feature."""
+    #     response = requests.get(f"{self.tenant_x_url}/help", timeout=settings["API_TIMEOUT"])
+    #     self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+    #     self.assertEqual(response.url, f"{self.tenant_x_url}/help")
+
+    def test_not_found_logged_out(self):
+        """Test the not_found and logout feature."""
+        response = requests.get(f"{self.tenant_x_url}/contact", timeout=settings["API_TIMEOUT"])
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(response.url, f"{self.tenant_x_url}/contact")
+
+    def test_redirect_logged_out(self):
+        """Test the redirect and logout feature."""
+        response = requests.get(f"{self.tenant_x_url}/faq", timeout=settings["API_TIMEOUT"])
+        self.assertEqual(response.history[0].status_code, status.HTTP_302_FOUND)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.url, f"{self.tenant_x_url}/donate")
