@@ -50,8 +50,8 @@ python-quality-test:
 run-tests: python-test python-quality-test
 
 run-integration-tests: install-dev-dependencies
-	pytest -rPf ./eox_core --ignore-glob='**/unit/*' --ignore-glob='**/edxapp_wrapper/*'
-	# pytest -rPf ./eox_core --ignore-glob='**/unit/*' --ignore-glob='**/edxapp_wrapper/*' --ignore-glob='**/api/*'
+	# pytest -rPf ./eox_core --ignore-glob='**/unit/*' --ignore-glob='**/edxapp_wrapper/*'
+	pytest -rPf ./eox_core --ignore-glob='**/unit/*' --ignore-glob='**/edxapp_wrapper/*' --ignore-glob='**/api/*'
 
 upgrade: export CUSTOM_COMPILE_COMMAND=make upgrade
 upgrade: ## update the requirements/*.txt files with the latest packages satisfying requirements/*.in
