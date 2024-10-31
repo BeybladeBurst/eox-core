@@ -91,6 +91,21 @@
         "fields": {
             "external_key": "tenant-x-key",
             "lms_configs": {
+                "EDNX_CUSTOM_PATH_REDIRECTS": {
+                    "/blog": {
+                        "redirect_always": "/donate"
+                    },
+                    "/contact": "not_found_loggedout",
+                    "/courses": {
+                        "redirect_loggedin": "/donate"
+                    },
+                    "/faq": {
+                        "redirect_loggedout": "/donate"
+                    },
+                    "/help": "not_found_loggedin",
+                    "/privacy": "not_found",
+                    "/tos": "login_required"
+                },
                 "EDNX_USE_SIGNAL": true,
                 "PLATFORM_NAME": "Tenant X",
                 "SITE_NAME": "tenant-x.local.edly.io",
