@@ -4,8 +4,7 @@ import requests
 from django.conf import settings as ds
 from rest_framework import status
 
-from eox_core.api.v1.tests.integration.test_views import get_access_token
-from eox_core.test_utils import BaseIntegrationTest
+from eox_core.tests.integration.utils import BaseIntegrationTest, get_access_token
 
 settings = ds.INTEGRATION_TEST_SETTINGS
 
