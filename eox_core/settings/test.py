@@ -115,8 +115,3 @@ INTEGRATION_TEST_SETTINGS = {
     "DEMO_COURSE_ID": os.environ.get("DEMO_COURSE_ID", "course-v1:OpenedX+DemoX+DemoCourse"),
     "AUTHN_MICROFRONTEND_URL": "http://apps.local.edly.io/authn"
 }
-# MIDDLEWARE = ["eox_core.middleware.PathRedirectionMiddleware"]
-# EDNX_CUSTOM_PATH_REDIRECTIONS = {
-#     "/courses": {"redirect_always": "/about"},
-#     "/blog": {"redirect_always": "/donate"},
-# }
