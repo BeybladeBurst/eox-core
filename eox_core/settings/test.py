@@ -113,5 +113,4 @@ INTEGRATION_TEST_SETTINGS = {
     "CLIENT_ID": "client_id",
     "CLIENT_SECRET": "client_secret",
     "DEMO_COURSE_ID": os.environ.get("DEMO_COURSE_ID", "course-v1:OpenedX+DemoX+DemoCourse"),
-    "AUTHN_MICROFRONTEND_URL": "http://apps.local.edly.io/authn"
 }

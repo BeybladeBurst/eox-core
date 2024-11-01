@@ -46,7 +46,7 @@ class TestPathRedirectionMiddleware(BaseIntegrationTest):
         """Test the login_required feature."""
         response = requests.get(f"{self.tenant_x_url}/tos", timeout=settings["API_TIMEOUT"])
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.url, f"{settings['AUTHN_MICROFRONTEND_URL']}/login?next=%2Ftos")
+        self.assertEqual(response.url, f"http://{settings['LMS_BASE']}/login?next=/tos")
 
     def test_not_found(self):
         """Test the not_found feature."""
