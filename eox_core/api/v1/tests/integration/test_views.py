@@ -281,6 +281,25 @@ class PreEnrollmentAPIRequestMixin:
         return make_request(tenant, "DELETE", url=self.PRE_ENROLLMENT_URL, data=data)
 
 
+class GradeAPIRequestMixin:
+    """Mixin class for the Grade API request methods."""
+
+    GRADE_URL = f"{settings['EOX_CORE_API_BASE']}{reverse('eox-api:eox-api:edxapp-grade')}"
+
+    def get_grade_info(self, tenant: dict, params: dict | None = None) -> requests.Response:
+        """
+        Get an grade in a tenant.
+
+        Args:
+            tenant (dict): The tenant data.
+            params (dict, optional): The query parameters for the request.
+
+        Returns:
+            requests.Response: The response object.
+        """
+        return make_request(tenant, "GET", url=self.GRADE_URL, params=params)
+
+
 @ddt.ddt
 class TestUsersAPIIntegration(BaseAPIIntegrationTest, UsersAPIRequestMixin):
     """Integration test suite for the Users API"""
@@ -1543,3 +1562,143 @@ class TestInfoView(BaseAPIIntegrationTest):
         self.assertIn("version", response_data)
         self.assertIn("name", response_data)
         self.assertIn("git", response_data)
+
+
+@ddt.ddt
+# pylint: disable=too-many-ancestors
+class TestGradeAPIIntegration(
+    BaseAPIIntegrationTest,
+    UsersAPIRequestMixin,
+    EnrollmentAPIRequestMixin,
+    GradeAPIRequestMixin
+):
+    """Integration test suite for the Grade API"""
+
+    def setUp(self) -> None:
+        """Set up the test suite"""
+        super().setUp()
+        self.mode = "audit"
+        self.user = next(FAKE_USER_DATA)
+        self.create_user(self.tenant_x, self.user)
+        self.create_enrollment(self.tenant_x, {
+            "email": self.user['email'],
+            "course_id": self.demo_course_id,
+            "mode": self.mode,
+        })
+
+    def test_read_valid_default_params(self):
+        """
+        Get grades info from a user enrolled on a course without the optional
+        fields.
+
+        Open edX definitions tested:
+        - `get_edxapp_user`
+        - `create_enrollment`
+        - `check_edxapp_account_conflicts`
+        - `check_edxapp_enrollment_is_valid`
+
+        Expected result:
+        - The status code is 200.
+        - The response indicates the enrollment was created successfully.
+        - The enrollment is created in the tenant with the provided data.
+        """
+        params = {
+            "email": self.user['email'],
+            "course_id": self.demo_course_id,
+        }
+
+        response = self.get_grade_info(self.tenant_x, params)
+        response_content = response.json()
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("earned_grade", response_content)
+        self.assertNotIn("grading_policy", response_content)
+        self.assertNotIn("section_breakdown", response_content)
+
+    def test_read_detail_no_policy(self):
+        """
+        Get grades info from a user enrolled on a course. Include detailed info
+        for each graded subsection.
+
+        Open edX definitions tested:
+        - `get_edxapp_user`
+        - `create_enrollment`
+        - `check_edxapp_account_conflicts`
+        - `check_edxapp_enrollment_is_valid`
+
+        Expected result:
+        - The status code is 200.
+        - The response indicates the enrollment was created successfully.
+        - The enrollment is created in the tenant with the provided data.
+        """
+        params = {
+            "email": self.user['email'],
+            "course_id": self.demo_course_id,
+            "detailed": True,
+        }
+
+        response = self.get_grade_info(self.tenant_x, params)
+        response_content = response.json()
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("earned_grade", response_content)
+        self.assertIn("section_breakdown", response_content)
+        self.assertNotIn("grading_policy", response_content)
+
+    def test_read_policy_detail(self):
+        """
+        Get grades info from a user enrolled on a course. Include all extra info
+        (subsection details and grading policy)
+
+        Open edX definitions tested:
+        - `get_edxapp_user`
+        - `create_enrollment`
+        - `check_edxapp_account_conflicts`
+        - `check_edxapp_enrollment_is_valid`
+
+        Expected result:
+        - The status code is 200.
+        - The response indicates the enrollment was created successfully.
+        - The enrollment is created in the tenant with the provided data.
+        """
+        params = {
+            "email": self.user['email'],
+            "course_id": self.demo_course_id,
+            "detailed": True,
+            "grading_policy": True,
+        }
+
+        response = self.get_grade_info(self.tenant_x, params)
+        response_content = response.json()
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("earned_grade", response_content)
+        self.assertIn("section_breakdown", response_content)
+        self.assertIn("grading_policy", response_content)
+        self.assertIn("grader", response_content["grading_policy"])
+        self.assertIn("grade_cutoffs", response_content["grading_policy"])
+
+    def test_read_invalid_enrollment_for_site(self):
+        """
+        Get grade info for a user and course from another site.
+
+        Open edX definitions tested:
+        - `get_edxapp_user`
+        - `create_enrollment`
+        - `check_edxapp_account_conflicts`
+        - `check_edxapp_enrollment_is_valid`
+
+        Expected result:
+        - The status code is 404.
+        - The response indicates the enrollment was created successfully.
+        - The enrollment is created in the tenant with the provided data.
+        """
+        params = {
+            "email": self.user['email'],
+            "course_id": self.demo_course_id,
+            "detailed": True,
+            "grading_policy": True,
+        }
+
+        response = self.get_grade_info(self.tenant_y, params)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
