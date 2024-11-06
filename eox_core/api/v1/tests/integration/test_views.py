@@ -1584,6 +1584,8 @@ class TestGradeAPIIntegration(
             "email": self.user['email'],
             "course_id": self.demo_course_id,
             "mode": self.mode,
+            "is_active": True,
+            "force": True,
         })
 
     def test_read_valid_default_params(self):
@@ -1603,7 +1605,7 @@ class TestGradeAPIIntegration(
         - The enrollment is created in the tenant with the provided data.
         """
         params = {
-            "email": self.user['email'],
+            "username": self.user['username'],
             "course_id": self.demo_course_id,
         }
 
@@ -1632,7 +1634,7 @@ class TestGradeAPIIntegration(
         - The enrollment is created in the tenant with the provided data.
         """
         params = {
-            "email": self.user['email'],
+            "username": self.user['username'],
             "course_id": self.demo_course_id,
             "detailed": True,
         }
@@ -1662,7 +1664,7 @@ class TestGradeAPIIntegration(
         - The enrollment is created in the tenant with the provided data.
         """
         params = {
-            "email": self.user['email'],
+            "username": self.user['username'],
             "course_id": self.demo_course_id,
             "detailed": True,
             "grading_policy": True,
@@ -1694,7 +1696,7 @@ class TestGradeAPIIntegration(
         - The enrollment is created in the tenant with the provided data.
         """
         params = {
-            "email": self.user['email'],
+            "username": self.user['username'],
             "course_id": self.demo_course_id,
             "detailed": True,
             "grading_policy": True,
