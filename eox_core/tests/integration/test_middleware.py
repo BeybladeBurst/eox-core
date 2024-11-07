@@ -32,16 +32,6 @@ class TestPathRedirectionMiddleware(BaseIntegrationTest):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.url, f"{self.tenant_x_url}/donate")
 
-    # def test_login_required_with_logged_user(self):
-    #     """Test the login_required feature with a logged user."""
-    #     response = requests.get(
-    #         f"{self.tenant_x_url}/tos",
-    #         headers={"Authorization": f"Bearer {ACCESS_TOKEN}"},
-    #         timeout=settings["API_TIMEOUT"],
-    #     )
-    #     self.assertEqual(response.status_code, status.HTTP_200_OK)
-    #     self.assertEqual(response.url, f"{self.tenant_x_url}/tos")
-
     def test_login_required(self):
         """Test the login_required feature."""
         response = requests.get(f"{self.tenant_x_url}/tos", timeout=settings["API_TIMEOUT"])
@@ -53,12 +43,6 @@ class TestPathRedirectionMiddleware(BaseIntegrationTest):
         response = requests.get(f"{self.tenant_x_url}/privacy", timeout=settings["API_TIMEOUT"])
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
         self.assertEqual(response.url, f"{self.tenant_x_url}/privacy")
-
-    # def test_not_found_logged_in(self):
-    #     """Test the not_found and login_required feature."""
-    #     response = requests.get(f"{self.tenant_x_url}/help", timeout=settings["API_TIMEOUT"])
-    #     self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
-    #     self.assertEqual(response.url, f"{self.tenant_x_url}/help")
 
     def test_not_found_logged_out(self):
         """Test the not_found and logout feature."""
