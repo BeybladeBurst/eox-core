@@ -1597,9 +1597,9 @@ class TestGradeAPIIntegration(
         {"detailed": True, "grading_policy": False},
         {"detailed": True, "grading_policy": True},
     )
-    def test_read_valid_params_successfully(self, extra_params: dict):
+    def test_get_grades_for_user_successfully(self, extra_params: dict):
         """
-        Get grades info from a user enrolled on a course.
+        Get Grade info about the user who belongs to tenant where the course is hosted
 
         Open edX definitions tested:
         - `get_edxapp_user`
@@ -1636,7 +1636,7 @@ class TestGradeAPIIntegration(
         else:
             self.assertNotIn("grading_policy", response_content)
 
-    def test_invalid_user_grade_for_another_site(self):
+    def test_get_grade_for_user_not_found(self):
         """
         Test get grade info for a user and course from another site.
 
@@ -1655,6 +1655,7 @@ class TestGradeAPIIntegration(
 
         response = self.get_grade_info(self.tenant_y, params)
         response_data = response.json()
+
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
         self.assertIn("detail", response_data)
         self.assertEqual(
@@ -1662,9 +1663,9 @@ class TestGradeAPIIntegration(
             f"No user found by {{'username': '{params['username']}'}} on site {self.tenant_y['domain']}.",
         )
 
-    def test_invalid_enrollment_with_existing_course(self):
+    def test_get_grade_for_enrollment_not_found(self):
         """
-        Test grade info for a invalid enrollment with existing course.
+        Test grade info for a enrollment not found.
 
         Open edX definitions tested:
         - `get_enrollment`
@@ -1675,6 +1676,7 @@ class TestGradeAPIIntegration(
         """
         response = self.get_grade_info(self.tenant_x, self.params)
         response_data = response.json()
+
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
         self.assertEqual(
             response_data, [
@@ -1682,9 +1684,9 @@ class TestGradeAPIIntegration(
             ],
         )
 
-    def test_invalid_enrollment_without_course(self):
+    def test_get_grade_for_course_not_found(self):
         """
-        Test grade info for a invalid enrollment without course.
+        Test grade info for a course not found.
 
         Open edX definitions tested:
         - `get_enrollment`
@@ -1701,6 +1703,7 @@ class TestGradeAPIIntegration(
             }
         )
         response_data = response.json()
+
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
         self.assertEqual(
             response_data, [
