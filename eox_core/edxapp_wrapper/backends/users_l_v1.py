@@ -3,6 +3,7 @@
 """
 Backend for the create_edxapp_user that works under the open-release/lilac.master tag
 """
+import json
 import logging
 
 from common.djangoapps.student.helpers import (  # pylint: disable=import-error,no-name-in-module
@@ -25,7 +26,11 @@ from crum import get_current_user
 from django import forms
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.db import transaction
+from django.contrib.auth.models import User as NewUser
+from django.db import IntegrityError, transaction
+from django.core.validators import ValidationError
+from common.djangoapps.util.password_policy_validators import normalize_password
+from edx_django_utils.user import generate_password  # pylint: disable=import-error,unused-import
 from openedx.core.djangoapps.lang_pref import LANGUAGE_KEY  # pylint: disable=import-error
 from openedx.core.djangoapps.site_configuration import helpers as configuration_helpers  # pylint: disable=import-error
 from openedx.core.djangoapps.user_api.accounts import USERNAME_MAX_LENGTH  # pylint: disable=import-error,unused-import
@@ -34,11 +39,11 @@ from openedx.core.djangoapps.user_api.accounts.views import \
     _set_unusable_password  # pylint: disable=import-error,unused-import
 from openedx.core.djangoapps.user_api.models import UserRetirementStatus  # pylint: disable=import-error
 from openedx.core.djangoapps.user_api.preferences import api as preferences_api  # pylint: disable=import-error
-from openedx.core.djangoapps.user_authn.utils import generate_password  # pylint: disable=import-error,unused-import
 from openedx.core.djangoapps.user_authn.views.register import \
     REGISTER_USER as post_register  # pylint: disable=import-error
 from openedx.core.djangoapps.user_authn.views.registration_form import (  # pylint: disable=import-error
     AccountCreationForm,
+    get_registration_extension_form,
 )
 from openedx.core.djangolib.oauth2_retirement_utils import \
     retire_dot_oauth2_models  # pylint: disable=import-error,unused-import
@@ -48,9 +53,19 @@ from rest_framework import status
 from rest_framework.exceptions import NotFound
 from social_django.models import UserSocialAuth  # pylint: disable=import-error
 
+EMAIL_EXISTS_MSG_FMT = _("An account with the Email '{email}' already exists.")
+USERNAME_EXISTS_MSG_FMT = _("An account with the Public Username '{username}' already exists.")
 LOG = logging.getLogger(__name__)
 User = get_user_model()  # pylint: disable=invalid-name
 
+class AccountValidationError(Exception):
+    """
+    Used in account creation views to raise exceptions with details about specific invalid fields
+    """
+    def __init__(self, message, field, error_code=None):
+        super().__init__(message)
+        self.field = field
+        self.error_code = error_code
 
 def get_user_read_only_serializer():
     """
@@ -87,7 +102,7 @@ def is_allowed_to_skip_extra_registration_fields(account_creation_data):
     3. The data received in the parameters does not contain any of the
         REGISTRATION_EXTRA_FIELDS configured for the microsite.
 
-    In case any of these conditions is not met the function returns
+    In case any of these conditions is not met then the function returns
     False.
     """
     skip_extra_registration_fields = account_creation_data.pop("skip_extra_registration_fields", False)
@@ -132,6 +147,68 @@ class EdnxAccountCreationForm(AccountCreationForm):
         if data.pop("skip_password", False):
             self.fields['password'] = forms.CharField(required=False)
 
+def create_account(form, custom_form=None):
+    errors = {}
+    errors.update(form.errors)
+    if custom_form:
+        errors.update(custom_form.errors)
+
+    if errors:
+        raise ValidationError(errors)
+
+    proposed_username = form.cleaned_data["username"]
+    user = NewUser(
+        username=proposed_username,
+        email=form.cleaned_data["email"],
+        is_active=False
+    )
+    password = normalize_password(form.cleaned_data["password"])
+    user.set_password(password)
+    registration = Registration()
+
+    try:
+        with transaction.atomic():
+            user.save()
+            if custom_form:
+                custom_model = custom_form.save(commit=False)
+                custom_model.user = user
+                custom_model.save()
+    except IntegrityError:
+        if username_exists_or_retired(user.username):  # lint-amnesty, pylint: disable=no-else-raise
+            raise AccountValidationError(  # lint-amnesty, pylint: disable=raise-missing-from
+                USERNAME_EXISTS_MSG_FMT.format(username=proposed_username),
+                field="username",
+                error_code='duplicate-username',
+            )
+        elif email_exists_or_retired(user.email):
+            raise AccountValidationError(  # lint-amnesty, pylint: disable=raise-missing-from
+                _("An account with the Email '{email}' already exists.").format(email=user.email),
+                field="email",
+                error_code='duplicate-email'
+            )
+        else:
+            raise
+
+    registration.register(user)
+
+    profile_fields = [
+        "name", "level_of_education", "gender", "mailing_address", "city", "country", "goals",
+        "year_of_birth"
+    ]
+    profile = UserProfile(
+        user=user,
+        **{key: form.cleaned_data.get(key) for key in profile_fields}
+    )
+    extended_profile = form.cleaned_extended_profile
+    if extended_profile:
+        profile.meta = json.dumps(extended_profile)
+    try:
+        profile.save()
+    except Exception:
+        LOG.exception(f"UserProfile creation failed for user {user.id}.")
+        raise
+
+    return user, profile, registration
 
 def create_edxapp_user(*args, **kwargs):
     """
@@ -174,12 +251,12 @@ def create_edxapp_user(*args, **kwargs):
 
     # Go ahead and create the new user
     with transaction.atomic():
-        # In theory is possible to extend the registration form with a custom app
+        # Is possible to extend the registration form with a custom app
         # An example form app for this can be found at http://github.com/open-craft/custom-form-app
-        # form = get_registration_extension_form(data=params)
+        custom_form = get_registration_extension_form(data=account_creation_form_data["data"])
         # if not form:
         form = EdnxAccountCreationForm(**account_creation_form_data)
-        (user, profile, registration) = do_create_account(form)  # pylint: disable=unused-variable
+        (user, profile, registration) = create_account(form, custom_form)  # pylint: disable=unused-variable
 
     site = kwargs.pop("site", False)
     if site:
